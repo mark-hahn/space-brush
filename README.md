@@ -78,5 +78,9 @@ Space Brush is a successor to space-pen. The name brush comes from it giving a m
     
 ### Examples
 
-These will be provided in a separate doc which has not been written yet.
+See the `sample-code.coffee` file in the root of this package.
+
+### License
+
+Space-brush is copyright Mark Hahn using the MIT license.
 
