@@ -1,0 +1,10 @@
+{
+  "name": "space-brush",
+  "main": "./lib/main",
+  "version": "0.1.0",
+  "description": "A reactive coffeescript HTML DSL",
+  "repository": "https://github.com/mark-hahn/space-brush",
+  "license": "MIT",
+  "dependencies": {
+  }
+}
