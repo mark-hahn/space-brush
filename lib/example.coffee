@@ -1,26 +1,34 @@
 {SpaceBrush} = require './main.coffee'
 
 class HelloView extends SpaceBrush
-  @content: (params) ->
-    @div =>
-      @div params.greeting
-      @label for: 'name', "What is your name? "
-      @div =>
-        @input name: 'name', outlet: 'name'
-        @button click: 'sayHello', "That's My Name"
-      @div outlet: "personalGreeting"
+  @content: ->
+    @div '.sample', outlet: 'sample', =>
+      @template '#msgTemplate', =>
+        @h1 outlet: 'heading', "The Sample package is dead!",
+      @div '#msgHost', outlet: 'msgHost', =>
+        @shadow outlet: 'shadowRoot', =>
+          @div outlet: 'shadow', 'Shadow Content!'
+      @div outlet: 'msgDisplay'
 
   initialize: (params) ->
     @greeting = params.greeting
 
-  sayHello: ->
-    @personalGreeting.innerHTML = "#{@greeting}, #{@name.value}"
+  displayMessage: (message) ->
+    @templates.msgTemplate.heading.innerHTML = message
+    @appendTemplate('msgTemplate', 'msgDisplay')
 
 
 view = new HelloView({greeting: 'Hello'})
-document.body.appendChild(view)
+view.displayMessage("Sample package is alive!")
+document.body.appendChild(view.el)
+console.log view
 
-# view.element holds <hello-view> element
+
+# view.el holds <hello-view> element
 # view.greeting = 'Hello'
-# view.name = [Input Element]
+# view.msgDisplay = [Div element]
 # view.personalGreeting = [Div Element]
+# view.shadowRoot = [Document Fragment]
+# view.templates = [Object containing templates]
+# view.templates[template].element = [template element]
+# view.templates[template].heading = [h1 element]
