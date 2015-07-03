@@ -4,9 +4,9 @@ Tags =
    fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header html i
    iframe ins kbd label legend li main map mark menu meter nav noscript object
    ol optgroup option output p pre progress q rp rt ruby s samp script section
-   select small span strong style sub summary sup table tbody td textarea tfoot
+   select shadow small span strong style sub summary sup table tbody td textarea tfoot
    th thead time title tr u ul var video area base br col command embed hr img
-   input keygen link meta param source track wbr'.split /\s+/
+   input keygen link meta param source template track wbr'.split /\s+/
 
 SelfClosingTags = {}
 'area base br col command embed hr img input keygen link meta param
@@ -24,6 +24,8 @@ class SpaceBrush extends HTMLElement
 
   Tags.forEach (tagName) ->
     SpaceBrush[tagName] = (args...) -> @currentBuilder.tag(tagName, args...)
+
+    # console.log "Building template: #{args}"
 
   # Public: Add the given subview wired to an outlet with the given name
   #
@@ -67,11 +69,17 @@ class SpaceBrush extends HTMLElement
     [html, postProcessingSteps] = @buildHtml(fn)
     div = document.createElement('div')
     div.innerHTML = html
+    shadows = div.getElementsByTagName('shadow')
+    for shadow in shadows
+      root = shadow.parentNode.createShadowRoot()
+      root.innerHTML = shadow.innerHTML
+      shadow.parentNode.removeChild(shadow)
     fragment = div.childNodes
     step(fragment) for step in postProcessingSteps
     fragment
 
-  element: null
+  el: null
+  templates: null
 
   constructor: (args...) ->
     [html, postProcessingSteps] = @constructor.buildHtml -> @content(args...)
@@ -79,17 +87,44 @@ class SpaceBrush extends HTMLElement
     @detached = => @detached?()
     dashName = this.constructor.name.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-')
     .toLowerCase()
-    div = document.createElement(dashName)
-    div.innerHTML = html
-    fragment = div
-    step(fragment) for step in postProcessingSteps
-    @element = fragment
-    @wireOutlets(this)
-    @bindEventHandlers(this)
+    customElement = document.createElement(dashName)
+    customElement.innerHTML = html
+    # populate shadow roots
+    shadows = customElement.getElementsByTagName('shadow')
+    for shadow in shadows
+      root = shadow.parentNode.createShadowRoot()
+      root.innerHTML = shadow.innerHTML
+      @wireOutlets(this, root)
+      @bindEventHandlers(this, root)
+      if shadow.hasAttribute('outlet')
+        this[shadow.getAttribute('outlet')] = root
+      shadow.parentNode.removeChild(shadow)
+    # get templates
+    templates = customElement.getElementsByTagName('template')
+    @templates = {} if templates.length > 0
+    for template in templates
+      content = template
+      @templates[template.id] = {}
+      @templates[template.id]['element'] = template
+      @wireOutlets(@templates[template.id], template.content)
+      # var t = document.querySelector('#mytemplate');
+      # t.content.querySelector('img').src = 'logo.png';
+      # var clone = document.importNode(t.content, true);
+      # document.body.appendChild(clone);
+    step(customElement) for step in postProcessingSteps
+    @el = customElement
+    @wireOutlets(this, @el)
+    @bindEventHandlers(this, @el)
 
     if postProcessingSteps?
       step(this) for step in postProcessingSteps
     @initialize?(args...)
+
+  appendTemplate: (template, outlet) ->
+    content = @templates[template]['element'].content
+    div = document.createElement('div')
+    div.appendChild(content)
+    this[outlet].innerHTML = div.innerHTML
 
   buildHtml: (params) ->
     @constructor.builder = new Builder
@@ -98,23 +133,22 @@ class SpaceBrush extends HTMLElement
     @constructor.builder = null
     postProcessingSteps
 
-  wireOutlets: (view) ->
-    for element in view.element.querySelectorAll('[outlet]')
+  wireOutlets: (view, el) ->
+    for element in el.querySelectorAll('[outlet]')
       outlet = element.getAttribute('outlet')
       view[outlet] = element
       element.removeAttribute('outlet')
 
     undefined
 
-  bindEventHandlers: (view) ->
+  bindEventHandlers: (view, el) ->
     for eventName in Events
       selector = "[#{eventName}]"
-      for element in view.element.querySelectorAll(selector)
+      for element in el.querySelectorAll(selector)
         do (element) ->
           methodName = element.getAttribute(eventName)
           element.addEventListener eventName, (event) -> view[methodName](event, element)
-
-      if view.element.matches(selector)
+      if typeof(el) is not 'function' and el.matches(selector)
         methodName = view.element.getAttribute(eventName)
         do (methodName) ->
           view.addEventListener eventName, (event) -> view[methodName](event, view)
@@ -144,13 +178,6 @@ class Builder
       @closeTag(name)
 
   openTag: (name, attributes) ->
-    if @document.length is 0
-      attributes ?= {}
-      if document.createElement(name).constructor is HTMLElement
-        attributes.is ?= name
-      else if document.createElement(name).constructor is HTMLUnknownElement
-        throw new Errror("Tag was not properly formed to include '-' in name")
-
     attributePairs =
       for attributeName, value of attributes
         "#{attributeName}=\"#{value}\""
@@ -189,14 +216,23 @@ class Builder
 
   extractOptions: (args) ->
     options = {}
+    options.attributes = {}
+    attributes = {}
     for arg in args
       switch typeof(arg)
         when 'function'
           options.content = arg
         when 'string', 'number'
-          options.text = arg.toString()
+          if arg.toString().substring(0, 1) is "."
+            attributes.class = arg.toString().substring(1, arg.toString().length)
+          else if arg.toString().substring(0, 1) is "#"
+            attributes.id = arg.toString().substring(1, arg.toString().length)
+          else
+            options.text = arg.toString()
         else
           options.attributes = arg
+    options.attributes.class = attributes.class if attributes.class
+    options.attributes.id = attributes.id if attributes.id
     options
 
 # Exports

@@ -1,6 +1,6 @@
 {
   "name": "space-brush",
-  "main": "./lib/test",
+  "main": "./lib/example",
   "version": "0.1.0",
   "description": "A reactive coffeescript HTML DSL",
   "repository": "https://github.com/mark-hahn/space-brush",
