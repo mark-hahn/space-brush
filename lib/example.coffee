@@ -1,26 +1,29 @@
 {SpaceBrush} = require './main.coffee'
 
-class HelloView extends SpaceBrush
+class Spacecraft extends SpaceBrush
   @content: (params) ->
-    @div =>
-      @div params.greeting
-      @label for: 'name', "What is your name? "
-      @div =>
-        @input name: 'name', outlet: 'name'
-        @button click: 'sayHello', "That's My Name"
-      @div outlet: "personalGreeting"
+    @h1 params.title
+    @ol outlet: 'spacecraftList', ['updateList'], =>
+      @li name for name in params.spacecrafts
 
   initialize: (params) ->
-    @greeting = params.greeting
+    @model = params
+    @addObjectObserver('logChange')
 
-  sayHello: ->
-    @personalGreeting.innerHTML = "#{@greeting}, #{@name.value}"
+  updateList: (changes) ->
+    for change in changes
+      if change.name is 'spacecrafts'
+        console.log 'Updating list'
+        @spacecraftList.innerHTML = ''
+        for name in @model.spacecrafts
+          li = document.createElement('li')
+          name = document.createTextNode(name)
+          li.appendChild(name)
+          @spacecraftList.appendChild(li)
 
+  logChange: ->
+    console.log "Model changed!"
 
-view = new HelloView({greeting: 'Hello'})
-document.body.appendChild(view)
-
-# view.element holds <hello-view> element
-# view.greeting = 'Hello'
-# view.name = [Input Element]
-# view.personalGreeting = [Div Element]
+view = new Spacecraft(title: "Spacecrafts", spacecrafts: ["Apollo I", "Apollo II"])
+document.body.appendChild(view.el)
+view.model.spacecrafts = ["Apollo III", "Apollo IV"]
